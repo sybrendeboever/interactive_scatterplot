@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Creating Vega Viz</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.9.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.2.1"></script>
+  </head>
+  <body>
+    <p style="font-weight:bold;text-align:center;font-size:50px;">
+        Interactive Vega scatterplot
+    </p>
+    <p style="font-weight:bold;text-align:center;font-size:15px;">
+        * VisualReality *
+    </p>
+    <p style="font-weight:bold;text-align:center;font-size:22px;">
+        
+    </p>
+    <hr>
+    
+    <div id="vis"></div>
+    <script type="text/javascript">
+      var yourViz = {
+        "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Area charts of stock prices, with an interactive overview and filtered detail views.",
+  "width": 720,
+  "height": 480,
+  "padding": 5,
+
+  "data": [
+    {
+      "name": "lowcarbongdp",
+      "url": "https://raw.githubusercontent.com/OmerYigit28/DataVisualization/main/LOWCARBON.json"
+    },
+    {
+
+      "name": "dataYear",
+      "source": "lowcarbongdp",
+      "transform": [
+        {"type": "filter", "expr": "datum.Year == Year"}
+      ]
+    }
+  ],
+
+  "signals": [
+    {
+      "name": "detailDomain"
+    },
+    { "name": "Year", "value": 2016,
+      "bind": {"input": "range", "min": 1990, "max": 2016, "step": 1} }
+  ],
+
+  "marks": [
+    {
+      "type": "group",
+      "name": "detail",
+      "encode": {
+        "enter": {
+          "height": {"value": 390},
+          "width": {"value": 720}
+        }
+      },
+      "scales": [
+        {
+          "name": "xDetail",
+          "type": "linear",
+          "range": "width",
+          "domain": {"data": "lowcarbongdp", "field": "GDPpercapita"},
+          "domainRaw": {"signal": "detailDomain"}
+        },
+        {
+          "name": "yDetail",
+          "type": "linear",
+          "range": [390, 0],
+          "domain": {"data": "lowcarbongdp", "field": "LowCarbonShare"},
+          "nice": true, "zero": true
+        },
+            {
+      "name": "color",
+      "type": "ordinal",
+      "range": "category",
+      "domain": {"data": "dataYear", "field": "Continent"}
+    }
+      ],
+      "axes": [
+        {"orient": "bottom", "scale": "xDetail"},
+        {"orient": "left", "scale": "yDetail"}
+      ],
+        "legends": [
+    {
+      "fill": "color",
+      "title": "Continent",
+      "padding": 4,
+      "encode": {
+        "symbols": {
+          "enter": {
+            "size": {"value": 50}
+          }
+        }
+      }
+    }
+  ],
+      "marks": [
+        {
+          "type": "group",
+          "encode": {
+            "enter": {
+              "height": {"field": {"group": "height"}},
+              "width": {"field": {"group": "width"}},
+              "clip": {"value": true}
+            }
+          },
+          "marks": [
+            {
+              "type": "symbol",
+              "from": {"data": "dataYear"},
+              "encode": {
+                "update": {
+                  "x": {"scale": "xDetail", "field": "GDPpercapita"},
+                  "y": {"scale": "yDetail", "field": "LowCarbonShare"},
+                  "y2": {"scale": "yDetail", "value": 0},
+                  "fill": {"scale": "color", "field": "Continent"}
+                }
+              }
+            
+    },{"name":"countries",
+      "type": "text",
+      "from": {"data": "dataYear"},
+      "encode": {
+        "update": {
+            "x": {"scale": "xDetail", "field": "GDPpercapita"},
+            "y": {"scale": "yDetail", "field": "LowCarbonShare"},
+            "fill": {"value": "#000"},
+            "text": {"field": "Country"}
+        }
+      }
+    }
+            
+          ]
+        }
+      ]
+    },
+
+    {
+      "type": "group",
+      "name": "overview",
+      "encode": {
+        "enter": {
+          "x": {"value": 0},
+          "y": {"value": 430},
+          "height": {"value": 70},
+          "width": {"value": 720},
+          "fill": {"value": "transparent"}
+        }
+      },
+      "signals": [
+        {
+          "name": "brush", "value": 10,
+          "on": [
+            {
+              "events": "@overview:mousedown",
+              "update": "[x(), x()]"
+            },
+            {
+              "events": "[@overview:mousedown, window:mouseup] > window:mousemove!",
+              "update": "[brush[0], clamp(x(), 0, width)]"
+            },
+            {
+              "events": {"signal": "delta"},
+              "update": "clampRange([anchor[0] + delta, anchor[1] + delta], 0, width)"
+            }
+          ]
+        },
+        {
+          "name": "anchor", "value": null,
+          "on": [{"events": "@brush:mousedown", "update": "slice(brush)"}]
+        },
+        {
+          "name": "xdown", "value": 0,
+          "on": [{"events": "@brush:mousedown", "update": "x()"}]
+        },
+        {
+          "name": "delta", "value": 0,
+          "on": [
+            {
+              "events": "[@brush:mousedown, window:mouseup] > window:mousemove!",
+              "update": "x() - xdown"
+            }
+          ]
+        },
+        {
+          "name": "detailDomain",
+          "push": "outer",
+          "on": [
+            {
+              "events": {"signal": "brush"},
+              "update": "span(brush) ? invert('xOverview', brush) : null"
+            }
+          ]
+        }
+      ],
+      "scales": [
+        {
+          "name": "xOverview",
+          "type": "linear",
+          "range": "width",
+          "domain": {"data": "lowcarbongdp", "field": "GDPpercapita"}
+        },
+        {
+          "name": "yOverview",
+          "type": "linear",
+          "range": [70, 0],
+          "domain": {"data": "lowcarbongdp", "field": "LowCarbonShare"},
+          "nice": true, "zero": true
+        },
+        {
+      "name": "color",
+      "type": "ordinal",
+      "range": "category",
+      "domain": {"data": "dataYear", "field": "Continent"}
+    }
+      ],
+      "axes": [
+        {"orient": "bottom", "scale": "xOverview"}
+      ],
+      "marks": [
+        {
+          "type": "symbol",
+          "from": {"data": "dataYear"},
+          "interactive": false,
+          "encode": {
+            "update": {
+              "x": {"scale": "xOverview", "field": "GDPpercapita"},
+              "y": {"scale": "yOverview", "field": "LowCarbonShare"},
+              "y2": {"scale": "yOverview", "value": 0},
+              "fill": {"scale": "color", "field": "Continent"}
+            }
+          }
+        },
+        
+        
+        {
+          "type": "rect",
+          "name": "brush",
+          "encode": {
+            "enter": {
+              "y": {"value": 0},
+              "height": {"value": 70},
+              "fill": {"value": "#333"},
+              "fillOpacity": {"value": 0.2}
+            },
+            "update": {
+              "x": {"signal": "brush[0]"},
+              "x2": {"signal": "brush[1]"}
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "interactive": false,
+          "encode": {
+            "enter": {
+              "y": {"value": 0},
+              "height": {"value": 70},
+              "width": {"value": 1},
+              "fill": {"value": "firebrick"}
+            },
+            "update": {
+              "x": {"signal": "brush[0]"}
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "interactive": false,
+          "encode": {
+            "enter": {
+              "y": {"value": 0},
+              "height": {"value": 70},
+              "width": {"value": 1},
+              "fill": {"value": "firebrick"}
+            },
+            "update": {
+              "x": {"signal": "brush[1]"}
+            }
+          }
+        }
+        
+        
+      ]
+    }
+  ]
+      };
+      vegaEmbed('#vis', yourViz);
+    </script>
+  </body>
+</html>
